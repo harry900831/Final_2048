@@ -1,15 +1,59 @@
 `define RANGE 4
 
-module main(clk, rst, up, down, left, right, state);
+module main(clk, rst, up, down, left, right, baord);
 	input clk, rst, up, down, left, right;
-	output [3 : 0] state;
+	output ['RANGE * 4 - 1 : 0] board;
+
+	reg [2 : 0] dir, state, next_state;
+	parameter INPUT = 3'b000;
+	parameter MERGE = 3'b001;
+	parameter GEN = 3'b010;
+
+	always@(*) begin
+		if(up == 1) dir = 3'b001;
+		else if(down == 1) dir = 3'b010;
+		else if(right == 1) dir = 3'b011;
+		else if(left == 1) dir = 3'b100;
+		else dir = 3'b000;
+	end
+
+	always@(posedge clk) begin
+		if(rst == 1) begin
+			state <= INPUT;
+		end else begin
+			state <= next_state;
+		end
+	end
+
+
+	always@(*) begin
+		case(state)
+			INPUT: begin
+				if(dir != 3'b000) next_state = MERGE;
+				else next_state = INPUT;
+			end
+			MERGE: begin
+				next_state = GEN;
+			end
+			GEN: begin
+				next_state = INPUT;
+			end
+		endcase
+
+	end
 
 
 
 endmodule
 
 
-module rotate ();
+module Move(clk, rst, dir, in, out);
+	input [`RANGE * 4 - 1 : 0] in;
+	output [`RANGW * 4 - 1 : 0] out;
+	always@(posedge clk) begin
+		if(rst == 1)
+		case
+	end
 
 
 endmodule
