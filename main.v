@@ -1,12 +1,9 @@
-`define RANGE 4
-
-module calc(clk, rst, up, down, left, right, board, state);
+module calc(clk, rst, up, down, left, right, board);
 	input clk, rst, up, down, left, right;
 	output reg [64 - 1 : 0] board;
-	output reg [2:0] state;
 	reg [64 - 1 : 0] next_board;
 	wire [64 - 1 : 0] up_board, down_board, right_board, left_board, gen_board;
-	reg [2 : 0] dir, next_dir, next_state;
+	reg [2 : 0] dir, next_dir, state, next_state;
 	wire [4 - 1 : 0] arr [15 : 0];
 	wire win, nomove;
 
@@ -28,8 +25,6 @@ module calc(clk, rst, up, down, left, right, board, state);
 	assign win = (((arr[15] == ZO4B || arr[14] == ZO4B) || (arr[13] == ZO4B || arr[12] == ZO4B)) || ((arr[11] == ZO4B || arr[10] == ZO4B) || (arr[9] == ZO4B || arr[8] == ZO4B))) || (((arr[7] == ZO4B || arr[6] == ZO4B) || (arr[5] == ZO4B || arr[4] == ZO4B)) || ((arr[3] == ZO4B || arr[2] == ZO4B) || (arr[1] == ZO4B || arr[0] == ZO4B)));
 	assign nomove = (board == up_board && board == down_board) && (board == right_board && board == left_board);
 
-
-
 	MoveUp mu(board, up_board);
 	MoveDown md(board, down_board);
 	MoveRight mr(board, right_board);
@@ -41,7 +36,7 @@ module calc(clk, rst, up, down, left, right, board, state);
 		if(rst == 1) begin
 			state <= INPUT;
 			dir <= 3'b0;
-			board <= 64'h0000_0000_0002_0012;
+			board <= 64'h0000_0100_0000_0010;
 		end else begin
 			state <= next_state;
 			dir <= next_dir;
@@ -56,11 +51,9 @@ module calc(clk, rst, up, down, left, right, board, state);
 			else if(left == 1) next_dir = LEFT;
 			else if(right == 1) next_dir = RIGHT;
 			else next_dir = 3'b0;
-		end else if(state == GEN) next_dir = 3'b0;
+		end else if(state == CHECK) next_dir = 3'b0;
 		else next_dir = dir;
 	end
-
-
 
 	always@(*) begin
 		case(state)
@@ -69,23 +62,24 @@ module calc(clk, rst, up, down, left, right, board, state);
 				else next_state = INPUT;
 			end
 			MERGE: begin
-				next_state = GEN;
+			     case(dir)
+			         UP: next_state = (board == up_board ? CHECK : GEN);
+			         DOWN: next_state = (board == down_board ? CHECK : GEN);
+			         LEFT: next_state = (board == left_board ? CHECK : GEN);
+			         RIGHT: next_state = (board == right_board ? CHECK : GEN);
+			         default next_state = GEN;
+			     endcase
 			end
-			GEN: begin
-				next_state = CHECK;
-			end
+			GEN: next_state = CHECK;
 			CHECK: begin
 				if(win == 1 || nomove == 1) next_state = END;
 				else next_state = INPUT;
 			end
-			END: begin
-				next_state = END;
-			end
+			END: next_state = END;
 			default: next_state = END;
 		endcase
 	end
 
- 
 	always@(*) begin
 		if(state == MERGE) begin
 			case(dir)
@@ -96,10 +90,9 @@ module calc(clk, rst, up, down, left, right, board, state);
 				default: next_board =  board;
 			endcase
 		end else if(state == GEN) begin
-			next_board = gen_board;
+		        next_board = gen_board;
 		end else next_board = board;
 	end
-
 
 endmodule
 
@@ -123,21 +116,21 @@ module GenPlace(clk, rst, in, out);
 	assign new_num = (get_gen % 10) == 0 ? 4'b0010 : 4'b0001;
 
 	assign prefix[15] = (arr[15] == EMPTY);
-	assign prefix[14] = arr[14] == EMPTY + arr[15] == EMPTY;
-	assign prefix[13] = prefix[14] + arr[13] == EMPTY;
-	assign prefix[12] = prefix[14] + (arr[13] == EMPTY + arr[12] == EMPTY);
-	assign prefix[11] = prefix[12] + arr[11] == EMPTY;
-	assign prefix[10] = prefix[12] + (arr[11] == EMPTY + arr[10] == EMPTY);
-	assign prefix[9]  = prefix[10] + arr[9] == EMPTY;
-	assign prefix[8]  = prefix[10] + (arr[9] == EMPTY + arr[8] == EMPTY);
-	assign prefix[7]  = prefix[8] + arr[7] == EMPTY;
-	assign prefix[6]  = prefix[8] + (arr[7] == EMPTY + arr[6] == EMPTY);
-	assign prefix[5]  = prefix[6] + arr[5] == EMPTY;
-	assign prefix[4]  = prefix[6] + (arr[5] == EMPTY + arr[4] == EMPTY);
-	assign prefix[3]  = prefix[4] + arr[3] == EMPTY;
-	assign prefix[2]  = prefix[4] + (arr[3] == EMPTY + arr[2] == EMPTY);
-	assign prefix[1]  = prefix[2] + (arr[1] == EMPTY);
-	assign prefix[0]  = prefix[2] + (arr[1] == EMPTY + arr[0] == EMPTY);
+	assign prefix[14] = (arr[14] == EMPTY) + (arr[15] == EMPTY);
+	assign prefix[13] = prefix[14] + (arr[13] == EMPTY);
+	assign prefix[12] = prefix[14] + ((arr[13] == EMPTY) + (arr[12] == EMPTY));
+	assign prefix[11] = prefix[12] + (arr[11] == EMPTY);
+	assign prefix[10] = prefix[12] + ((arr[11] == EMPTY) + (arr[10] == EMPTY));
+	assign prefix[9]  = prefix[10] + (arr[9] == EMPTY);
+	assign prefix[8]  = prefix[10] + ((arr[9] == EMPTY) + (arr[8] == EMPTY));
+	assign prefix[7]  = prefix[8] + (arr[7] == EMPTY);
+	assign prefix[6]  = prefix[8] + ((arr[7] == EMPTY) + (arr[6] == EMPTY));
+	assign prefix[5]  = prefix[6] + (arr[5] == EMPTY);
+	assign prefix[4]  = prefix[6] + ((arr[5] == EMPTY) + (arr[4] == EMPTY));
+	assign prefix[3]  = prefix[4] + (arr[3] == EMPTY);
+	assign prefix[2]  = prefix[4] + ((arr[3] == EMPTY) + (arr[2] == EMPTY));
+	assign prefix[1]  = prefix[2] + ((arr[1] == EMPTY));
+	assign prefix[0]  = prefix[2] + ((arr[1] == EMPTY) + (arr[0] == EMPTY));
 
     always@(*) begin
         if(prefix[15] == gen_place && arr[15] == EMPTY) out = {new_num, in[59 : 0]};
@@ -156,7 +149,7 @@ module GenPlace(clk, rst, in, out);
         else if(prefix[2] == gen_place && arr[2] == EMPTY) out = {in[63 : 12], new_num, in[7 : 0]};
         else if(prefix[1] == gen_place && arr[1] == EMPTY) out = {in[63 : 8], new_num, in[3 : 0]};
         else if(prefix[0] == gen_place && arr[0] == EMPTY) out = {in[63 : 4], new_num};
-        else out = in;     s
+        else out = in;
     end
     
 endmodule
