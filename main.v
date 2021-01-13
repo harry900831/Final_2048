@@ -4,11 +4,10 @@ module main(clk, rst, up, down, left, right, board);
 	input clk, rst, up, down, left, right;
 	output reg [`RANGE * 16 - 1 : 0] board;
 	reg [`RANGE * 16 - 1 : 0] next_board;
-	wire [`RANGE * 16 - 1 : 0] up_board, down_board, right_board, left_board;
+	wire [`RANGE * 16 - 1 : 0] up_board, down_board, right_board, left_board, gen_baord;
 	reg [2 : 0] dir, next_dir, state, next_state;
 	wire [`RANGE - 1 : 0] arr [15 : 0];
-	wire win;
-	wire [3 : 0] prefix [15 : 0];
+	wire win, nomove;
 
 	parameter INPUT = 3'b000;
 	parameter MERGE = 3'b001;
@@ -22,33 +21,19 @@ module main(clk, rst, up, down, left, right, board);
 	parameter RIGHT = 3'b100;
 
 	parameter ZO4B = 4'b1011;
-	parameter EMPTY = 4'b0000;
 
 
 	assign {arr[15], arr[14], arr[13], arr[12], arr[11], arr[10], arr[9], arr[8], arr[7], arr[6], arr[5], arr[4], arr[3], arr[2], arr[1], arr[0]} = board;
 	assign win = (((arr[15] == ZO4B || arr[14] == ZO4B) || (arr[13] == ZO4B || arr[12] == ZO4B)) || ((arr[11] == ZO4B || arr[10] == ZO4B) || (arr[9] == ZO4B || arr[8] == ZO4B))) || (((arr[7] == ZO4B || arr[6] == ZO4B) || (arr[5] == ZO4B || arr[4] == ZO4B)) || ((arr[3] == ZO4B || arr[2] == ZO4B) || (arr[1] == ZO4B || arr[0] == ZO4B)));
+	assign nomove = (board == up_board && board == down_board) && (board == right_board && board == left_board);
 
-	prefix[15] = arr[15] == EMPTY;
-	prefix[14] = arr[14] == EMPTY + arr[15] == EMPTY;
-	prefix[13] = prefix[14] + arr[13] == EMPTY;
-	prefix[12] = prefix[14] + (arr[13] == EMPTY + arr[12] == EMPTY);
-	prefix[11] = prefix[12] + arr[11] == EMPTY;
-	prefix[10] = prefix[12] + (arr[11] == EMPTY + arr[10] == EMPTY);
-	prefix[9]  = prefix[10] + array[9] == EMPTY;
-	prefix[8]  = prefix[10] + (array[9] == EMPTY + array[8] == EMPTY);
-	prefix[7]  = prefix[8] + array[7] == EMPTY;
-	prefix[6]  = prefix[8] + (array[7] == EMPTY + array[6] == EMPTY);
-	prefix[5]  = prefix[6] + array[5] == EMPTY;
-	prefix[4]  = prefix[6] + (array[5] == EMPTY + array[4] == EMPTY);
-	prefix[3]  = prefix[4] + array[3] == EMPTY;
-	prefix[2]  = prefix[4] + (array[3] == EMPTY + array[2] == EMPTY);
-	prefix[1]  = prefix[2] + (array[1] == EMPTY);
-	prefix[0]  = prefix[2] + (array[1] == EMPTY + array[0] == EMPTY);
+
 
 	MoveUp mu(board, up_board);
 	MoveDown md(board, down_board);
 	MoveRight mr(board, right_board);
 	MoveLeft ml(board, left_board);
+	GenPlace genb1(clk, rst, board, gen_board);
 
 
 	always@(posedge clk) begin
@@ -89,7 +74,7 @@ module main(clk, rst, up, down, left, right, board);
 				next_state = CHECK;
 			end
 			CHECK: begin
-				if(win == 1) next_state = END;
+				if(win == 1 || nomove == 1) next_state = END;
 				else next_state = INPUT;
 			end
 			END: begin
@@ -110,13 +95,81 @@ module main(clk, rst, up, down, left, right, board);
 				default: next_board = board;
 			endcase
 		end else if(state == GEN) begin
+			next_board = gen_board;
 		end else next_board = board;
 	end
 
 
 endmodule
 
-module RAND_GEN3(clk, rst, out);
+module GenPlace(clk, rst, in, out);
+	input clk, rst;
+	input [`RANGE * 16 - 1 : 0] in;
+	output reg [`RANGE * 16 - 1 : 0] out;
+	wire [`RANGE - 1 : 0] arr [15 : 0];
+	wire [3 : 0] prefix [15 : 0], get_gen0, gen_place, new_num;
+
+
+
+	parameter EMPTY = 4'b0000;
+
+	RandGen3 gen1(clk, rst, get_gen0);
+
+	assign {arr[15], arr[14], arr[13], arr[12], arr[11], arr[10], arr[9], arr[8], arr[7], arr[6], arr[5], arr[4], arr[3], arr[2], arr[1], arr[0]} = in;
+
+	assign gen_place = (get_gen0 % prefix[0]) + 1;
+	assign new_num = (get_gen0 % 10) == 0 ? 4'b0010 : 4'b0001;
+
+	assign prefix[15] = (arr[15] == EMPTY);
+	assign prefix[14] = arr[14] == EMPTY + arr[15] == EMPTY;
+	assign prefix[13] = prefix[14] + arr[13] == EMPTY;
+	assign prefix[12] = prefix[14] + (arr[13] == EMPTY + arr[12] == EMPTY);
+	assign prefix[11] = prefix[12] + arr[11] == EMPTY;
+	assign prefix[10] = prefix[12] + (arr[11] == EMPTY + arr[10] == EMPTY);
+	assign prefix[9]  = prefix[10] + arr[9] == EMPTY;
+	assign prefix[8]  = prefix[10] + (arr[9] == EMPTY + arr[8] == EMPTY);
+	assign prefix[7]  = prefix[8] + arr[7] == EMPTY;
+	assign prefix[6]  = prefix[8] + (arr[7] == EMPTY + arr[6] == EMPTY);
+	assign prefix[5]  = prefix[6] + arr[5] == EMPTY;
+	assign prefix[4]  = prefix[6] + (arr[5] == EMPTY + arr[4] == EMPTY);
+	assign prefix[3]  = prefix[4] + arr[3] == EMPTY;
+	assign prefix[2]  = prefix[4] + (arr[3] == EMPTY + arr[2] == EMPTY);
+	assign prefix[1]  = prefix[2] + (arr[1] == EMPTY);
+	assign prefix[0]  = prefix[2] + (arr[1] == EMPTY + arr[0] == EMPTY);
+
+	always@(*) begin
+		if(prefix[8] > gen_place) begin
+			if(prefix[12] > gen_place) begin
+				if(prefix[14] > gen_place) out = {new_num, in[59 : 0]};
+				else if(prefix[14] == gen_place) out = {in[63 : 60], new_num, in[55 : 0]};
+				else out = {in[63 : 56], new_num, in[51 : 0]};
+			end else if(prefix[12] == gen_place) out = {in[63 : 52], new_num, in[47 : 0]};
+			else begin
+				if(prefix[10] > gen_place) out = {in[63 : 48], new_num, in[43 : 0]};
+				else if(prefix[10] == gen_place) out = {in[63 : 44], new_num, in[39 : 0]};
+				else out = {in[63 : 40], new_num, in[35 : 0]};
+			end
+		end else begin
+			if(prefix[4] > gen_place) begin
+				if(prefix[7] > gen_place) out = {in[63 : 36], new_num, in[31 : 0]};
+				else if(prefix[6] > gen_place) out = {in[63 : 32], new_num, in[27 : 0]};
+				else if(prefix[6] == gen_place) out = {in[63 : 28], new_num, in[23 : 0]};
+				else out = {in[63 : 24], new_num, in[19 : 0]};
+			end else begin
+				if(prefix[2] > gen_place) begin
+					if(prefix[3] > gen_place) out = {in[63 : 20], new_num, in[15 : 0]};
+					else out = {in[63 : 16], new_num, in[11 : 0]};
+				end else if(prefix[2] == gen_place) out = {in[63 : 12], new_num, in[7 : 0]};
+				else begin
+					if(prefix[1] == gen_place) out = {in[63 : 8], new_num, in[3 : 0]};
+					else out = {in[63 : 4], new_num};
+				end
+			end
+		end
+	end
+endmodule
+
+module RandGen3(clk, rst, out);
 	input clk, rst;
 	output [3 : 0] out;
 	reg[7 : 0] DFF;
@@ -129,7 +182,7 @@ module RAND_GEN3(clk, rst, out);
 			DFF[3] <= DFF[0] ^ DFF[1];
 		end
 	end
-	out = DFF[3:0];
+	assign out = DFF[3:0];
 endmodule
 
 
