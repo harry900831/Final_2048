@@ -1,12 +1,13 @@
 `define RANGE 4
 
-module main(clk, rst, up, down, left, right, board);
+module calc(clk, rst, up, down, left, right, board, state);
 	input clk, rst, up, down, left, right;
-	output reg [`RANGE * 16 - 1 : 0] board;
-	reg [`RANGE * 16 - 1 : 0] next_board;
-	wire [`RANGE * 16 - 1 : 0] up_board, down_board, right_board, left_board, gen_baord;
-	reg [2 : 0] dir, next_dir, state, next_state;
-	wire [`RANGE - 1 : 0] arr [15 : 0];
+	output reg [64 - 1 : 0] board;
+	output reg [2:0] state;
+	reg [64 - 1 : 0] next_board;
+	wire [64 - 1 : 0] up_board, down_board, right_board, left_board, gen_board;
+	reg [2 : 0] dir, next_dir, next_state;
+	wire [4 - 1 : 0] arr [15 : 0];
 	wire win, nomove;
 
 	parameter INPUT = 3'b000;
@@ -40,7 +41,7 @@ module main(clk, rst, up, down, left, right, board);
 		if(rst == 1) begin
 			state <= INPUT;
 			dir <= 3'b0;
-			board <= 64'b00010001;
+			board <= 64'h0000_0000_0002_0012;
 		end else begin
 			state <= next_state;
 			dir <= next_dir;
@@ -64,7 +65,7 @@ module main(clk, rst, up, down, left, right, board);
 	always@(*) begin
 		case(state)
 			INPUT: begin
-				if(dir != 3'b0) next_state = MERGE;
+				if(next_dir != 3'b0) next_state = MERGE;
 				else next_state = INPUT;
 			end
 			MERGE: begin
@@ -84,15 +85,15 @@ module main(clk, rst, up, down, left, right, board);
 		endcase
 	end
 
-
+ 
 	always@(*) begin
 		if(state == MERGE) begin
 			case(dir)
-				UP: next_board = up_board;
-				DOWN: next_board = down_board;
-				LEFT: next_board = left_board;
-				RIGHT: next_board = right_board;
-				default: next_board = board;
+				UP: next_board =  up_board;
+				DOWN: next_board =  down_board;
+				LEFT: next_board =  left_board;
+				RIGHT: next_board =  right_board;
+				default: next_board =  board;
 			endcase
 		end else if(state == GEN) begin
 			next_board = gen_board;
@@ -104,21 +105,22 @@ endmodule
 
 module GenPlace(clk, rst, in, out);
 	input clk, rst;
-	input [`RANGE * 16 - 1 : 0] in;
-	output reg [`RANGE * 16 - 1 : 0] out;
-	wire [`RANGE - 1 : 0] arr [15 : 0];
-	wire [3 : 0] prefix [15 : 0], get_gen0, gen_place, new_num;
+	input [64 - 1 : 0] in;
+	output reg [64 - 1 : 0] out;
+	wire [3 : 0] arr [15 : 0];
+	wire [3 : 0] prefix [15 : 0];
+    wire [3 : 0] get_gen, gen_place, new_num;
 
 
 
 	parameter EMPTY = 4'b0000;
 
-	RandGen3 gen1(clk, rst, get_gen0);
+	RandGen4 gen1(clk, rst, get_gen);
 
 	assign {arr[15], arr[14], arr[13], arr[12], arr[11], arr[10], arr[9], arr[8], arr[7], arr[6], arr[5], arr[4], arr[3], arr[2], arr[1], arr[0]} = in;
 
-	assign gen_place = (get_gen0 % prefix[0]) + 1;
-	assign new_num = (get_gen0 % 10) == 0 ? 4'b0010 : 4'b0001;
+	assign gen_place = (get_gen % prefix[0]) + 1;
+	assign new_num = (get_gen % 10) == 0 ? 4'b0010 : 4'b0001;
 
 	assign prefix[15] = (arr[15] == EMPTY);
 	assign prefix[14] = arr[14] == EMPTY + arr[15] == EMPTY;
@@ -137,49 +139,43 @@ module GenPlace(clk, rst, in, out);
 	assign prefix[1]  = prefix[2] + (arr[1] == EMPTY);
 	assign prefix[0]  = prefix[2] + (arr[1] == EMPTY + arr[0] == EMPTY);
 
-	always@(*) begin
-		if(prefix[8] > gen_place) begin
-			if(prefix[12] > gen_place) begin
-				if(prefix[14] > gen_place) out = {new_num, in[59 : 0]};
-				else if(prefix[14] == gen_place) out = {in[63 : 60], new_num, in[55 : 0]};
-				else out = {in[63 : 56], new_num, in[51 : 0]};
-			end else if(prefix[12] == gen_place) out = {in[63 : 52], new_num, in[47 : 0]};
-			else begin
-				if(prefix[10] > gen_place) out = {in[63 : 48], new_num, in[43 : 0]};
-				else if(prefix[10] == gen_place) out = {in[63 : 44], new_num, in[39 : 0]};
-				else out = {in[63 : 40], new_num, in[35 : 0]};
-			end
-		end else begin
-			if(prefix[4] > gen_place) begin
-				if(prefix[7] > gen_place) out = {in[63 : 36], new_num, in[31 : 0]};
-				else if(prefix[6] > gen_place) out = {in[63 : 32], new_num, in[27 : 0]};
-				else if(prefix[6] == gen_place) out = {in[63 : 28], new_num, in[23 : 0]};
-				else out = {in[63 : 24], new_num, in[19 : 0]};
-			end else begin
-				if(prefix[2] > gen_place) begin
-					if(prefix[3] > gen_place) out = {in[63 : 20], new_num, in[15 : 0]};
-					else out = {in[63 : 16], new_num, in[11 : 0]};
-				end else if(prefix[2] == gen_place) out = {in[63 : 12], new_num, in[7 : 0]};
-				else begin
-					if(prefix[1] == gen_place) out = {in[63 : 8], new_num, in[3 : 0]};
-					else out = {in[63 : 4], new_num};
-				end
-			end
-		end
-	end
+    always@(*) begin
+        if(prefix[15] == gen_place && arr[15] == EMPTY) out = {new_num, in[59 : 0]};
+        else if(prefix[14] == gen_place && arr[14] == EMPTY) out = {in[63 : 60], new_num, in[55 : 0]};
+        else if(prefix[13] == gen_place && arr[13] == EMPTY) out = {in[63 : 56], new_num, in[51 : 0]};
+        else if(prefix[12] == gen_place && arr[12] == EMPTY) out = {in[63 : 52], new_num, in[47 : 0]};
+        else if(prefix[11] == gen_place && arr[11] == EMPTY) out = {in[63 : 48], new_num, in[43 : 0]};
+        else if(prefix[10] == gen_place && arr[10] == EMPTY) out = {in[63 : 44], new_num, in[39 : 0]};
+        else if(prefix[9] == gen_place && arr[9] == EMPTY) out = {in[63 : 40], new_num, in[35 : 0]};
+        else if(prefix[8] == gen_place && arr[8] == EMPTY) out = {in[63 : 36], new_num, in[31 : 0]};
+        else if(prefix[7] == gen_place && arr[7] == EMPTY) out = {in[63 : 32], new_num, in[27 : 0]};
+        else if(prefix[6] == gen_place && arr[6] == EMPTY) out = {in[63 : 28], new_num, in[23 : 0]};
+        else if(prefix[5] == gen_place && arr[5] == EMPTY) out = {in[63 : 24], new_num, in[19 : 0]};
+        else if(prefix[4] == gen_place && arr[4] == EMPTY) out = {in[63 : 20], new_num, in[15 : 0]};
+        else if(prefix[3] == gen_place && arr[3] == EMPTY) out = {in[63 : 16], new_num, in[11 : 0]};
+        else if(prefix[2] == gen_place && arr[2] == EMPTY) out = {in[63 : 12], new_num, in[7 : 0]};
+        else if(prefix[1] == gen_place && arr[1] == EMPTY) out = {in[63 : 8], new_num, in[3 : 0]};
+        else if(prefix[0] == gen_place && arr[0] == EMPTY) out = {in[63 : 4], new_num};
+        else out = in;     s
+    end
+    
 endmodule
 
-module RandGen3(clk, rst, out);
+module RandGen4(clk, rst, out);
 	input clk, rst;
 	output [3 : 0] out;
 	reg[7 : 0] DFF;
 	always@(posedge clk) begin
-		if(rst) DFF <= 6'b011101;
+		if(rst) DFF <= 8'b01110101;
 		else begin
 			DFF[0] <= DFF[1];
 			DFF[1] <= DFF[2];
 			DFF[2] <= DFF[3];
-			DFF[3] <= DFF[0] ^ DFF[1];
+			DFF[3] <= DFF[4] ^ DFF[1];
+			DFF[4] <= DFF[5];
+			DFF[5] <= DFF[6];
+			DFF[6] <= DFF[7];
+			DFF[7] <= DFF[0] ^ DFF[1];
 		end
 	end
 	assign out = DFF[3:0];
@@ -187,8 +183,8 @@ endmodule
 
 
 module MoveUp(in, out);
-	input [`RANGE * 16 - 1 : 0] in;
-	output [`RANGE * 16 - 1 : 0] out;
+	input [64 - 1 : 0] in;
+	output [64 - 1 : 0] out;
 	Merge mer1 ({in[15:12], in[31:28], in[47:44], in[63:60]}, {out[15:12], out[31:28], out[47:44], out[63:60]});
 	Merge mer2 ({in[11:8], in[27:24], in[43:40], in[59:56]}, {out[11:8], out[27:24], out[43:40], out[59:56]});
 	Merge mer3 ({in[7:4], in[23:20], in[39:36], in[55:52]}, {out[7:4], out[23:20], out[39:36], out[55:52]});
@@ -196,8 +192,8 @@ module MoveUp(in, out);
 endmodule
 
 module MoveDown(in, out);
-	input [`RANGE * 16 - 1 : 0] in;
-	output [`RANGE * 16 - 1 : 0] out;
+	input [64 - 1 : 0] in;
+	output [64 - 1 : 0] out;
 	Merge mer1 ({in[63:60], in[47:44], in[31:28], in[15:12]}, {out[63:60], out[47:44], out[31:28], out[15:12]});
 	Merge mer2 ({in[59:56], in[43:40], in[27:24], in[11:8]}, {out[59:56], out[43:40], out[27:24], out[11:8]});
 	Merge mer3 ({in[55:52], in[39:36], in[23:20], in[7:4]}, {out[55:52], out[39:36], out[23:20], out[7:4]});
@@ -205,8 +201,8 @@ module MoveDown(in, out);
 endmodule
 
 module MoveLeft(in, out);
-	input [`RANGE * 16 - 1 : 0] in;
-	output [`RANGE * 16 - 1 : 0] out;
+	input [64 - 1 : 0] in;
+	output [64 - 1 : 0] out;
 	Merge mer1 ({in[51:48], in[55:52], in[59:56], in[63:60]}, {out[51:48], out[55:52], out[59:56], out[63:60]});
 	Merge mer2 ({in[35:32], in[39:36], in[43:40], in[47:44]}, {out[35:32], out[39:36], out[43:40], out[47:44]});
 	Merge mer3 ({in[19:16], in[23:20], in[27:24], in[31:28]}, {out[19:16], out[23:20], out[27:24], out[31:28]});
@@ -214,8 +210,8 @@ module MoveLeft(in, out);
 endmodule
 
 module MoveRight(in, out);
-	input [`RANGE * 16 - 1 : 0] in;
-	output [`RANGE * 16 - 1 : 0] out;
+	input [64- 1 : 0] in;
+	output [64 - 1 : 0] out;
 	Merge mer1 (in[63 : 48], out[63 : 48]);
 	Merge mer2 (in[47 : 32], out[47 : 32]);
 	Merge mer3 (in[31 : 16], out[31 : 16]);
@@ -224,14 +220,14 @@ endmodule
 
 
 module Merge(in, out);
-	input [`RANGE * 4 - 1:0] in;
-	output reg [`RANGE * 4 - 1 : 0] out;
-	parameter zero = `RANGE'b0;
-	wire [`RANGE - 1 : 0] arr[3 : 0];
+	input [64 - 1:0] in;
+	output reg [64 - 1 : 0] out;
+	parameter zero = 4'b0;
+	wire [4 - 1 : 0] arr[3 : 0];
 	wire [3 : 0] type;
 
 	assign {arr[3], arr[2], arr[1], arr[0]} = in;
-	assign type = {arr[3] == zero, arr[2] == zero, arr[1] == zero, arr[0] == zero};
+	assign type = {arr[3] != zero, arr[2] != zero, arr[1] != zero, arr[0] != zero};
 
 	always@(*) begin
 		case (type)
@@ -239,57 +235,57 @@ module Merge(in, out);
 			4'b0001: out = in;
 			4'b0010: out = {{3{zero}}, arr[1]};
 			4'b0011:begin
-				if(arr[0] == arr[1]) out = {{3{zero}}, arr[0] + `RANGE'b1};
+				if(arr[0] == arr[1]) out = {{3{zero}}, arr[0] + 4'b1};
 				else out = {{2{zero}}, arr[1], arr[0]};
 			end
 			4'b0100: out = {{3{zero}}, arr[2]};
 			4'b0101:begin
-				if(arr[0] == arr[2]) out = {{3{zero}}, arr[0] + `RANGE'b1};
+				if(arr[0] == arr[2]) out = {{3{zero}}, arr[0] + 4'b1};
 				else out = {{2{zero}}, arr[2], arr[0]};
 			end
 			4'b0110:begin
-				if(arr[1] == arr[2]) out = {{3{zero}}, arr[1] + `RANGE'b1};
+				if(arr[1] == arr[2]) out = {{3{zero}}, arr[1] + 4'b1};
 				else out = {{2{zero}}, arr[2], arr[1]};
 			end
 			4'b0111:begin
-				if(arr[0] == arr[1]) out = {{2{zero}}, arr[2], arr[0] + `RANGE'b1};
-				else if(arr[1] == arr[2]) out = {{2{zero}}, arr[1] + `RANGE'b1, arr[0]};
+				if(arr[0] == arr[1]) out = {{2{zero}}, arr[2], arr[0] + 4'b1};
+				else if(arr[1] == arr[2]) out = {{2{zero}}, arr[1] + 4'b1, arr[0]};
 				else out = in;
 			end
 			4'b1000: out = {{3{zero}}, arr[3]};
 			4'b1001:begin
-				if(arr[0] == arr[3]) out = {{3{zero}}, arr[0] + `RANGE'b1};
+				if(arr[0] == arr[3]) out = {{3{zero}}, arr[0] + 4'b1};
 				else out = {{2{zero}}, arr[3], arr[0]};
 			end
 			4'b1010:begin
-				if(arr[1] == arr[3]) out = {{3{zero}}, arr[1] + `RANGE'b1};
+				if(arr[1] == arr[3]) out = {{3{zero}}, arr[1] + 4'b1};
 				else out = {{2{zero}}, arr[3], arr[1]};
 			end
 			4'b1011:begin
-				if(arr[0] == arr[1]) out = {{2{zero}}, arr[3], arr[0] + `RANGE'b1};
-				else if(arr[1] == arr[3]) out = {{2{zero}}, arr[1] + `RANGE'b1, arr[0]};
+				if(arr[0] == arr[1]) out = {{2{zero}}, arr[3], arr[0] + 4'b1};
+				else if(arr[1] == arr[3]) out = {{2{zero}}, arr[1] + 4'b1, arr[0]};
 				else out = {zero, arr[3], arr[1], arr[0]};
 			end
 			4'b1100:begin
-				if(arr[2] == arr[3]) out = {{3{zero}}, arr[2] + `RANGE'b1};
+				if(arr[2] == arr[3]) out = {{3{zero}}, arr[2] + 4'b1};
 				else out = {{2{zero}}, arr[3], arr[2]};
 			end
 			4'b1101:begin
-				if(arr[0] == arr[1]) out = {{2{zero}}, arr[3], arr[0] + `RANGE'b1};
-				else if(arr[2] == arr[3]) out = {{2{zero}}, arr[2] + `RANGE'b1, arr[0]};
+				if(arr[0] == arr[1]) out = {{2{zero}}, arr[3], arr[0] + 4'b1};
+				else if(arr[2] == arr[3]) out = {{2{zero}}, arr[2] + 4'b1, arr[0]};
 				else out = {zero, arr[3], arr[2], arr[0]};
 			end
 			4'b1110:begin
-				if(arr[1] == arr[2]) out = {{2{zero}}, arr[3], arr[1] + `RANGE'b1};
-				else if(arr[2] == arr[3]) out = {{2{zero}}, arr[2] + `RANGE'b1, arr[1]};
+				if(arr[1] == arr[2]) out = {{2{zero}}, arr[3], arr[1] + 4'b1};
+				else if(arr[2] == arr[3]) out = {{2{zero}}, arr[2] + 4'b1, arr[1]};
 				else out = {zero, arr[3], arr[2], arr[1]};
 			end
 			4'b1111:begin
 				if(arr[0] == arr[1]) begin
-					if(arr[1] == arr[2]) out = {{2{zero}}, arr[2] + `RANGE'b1, arr[0] + `RANGE'b1};
-					else out = {zero, arr[3], arr[2], arr[1] + `RANGE'b1};
-				end	else if(arr[1] == arr[2]) out = {zero, arr[3], arr[1] + `RANGE'b1, arr[0]};
-				else if(arr[2] == arr[3])out = {zero, arr[2] + `RANGE'b1, arr[1], arr[0]};
+					if(arr[1] == arr[2]) out = {{2{zero}}, arr[2] + 4'b1, arr[0] + 4'b1};
+					else out = {zero, arr[3], arr[2], arr[1] + 4'b1};
+				end	else if(arr[1] == arr[2]) out = {zero, arr[3], arr[1] + 4'b1, arr[0]};
+				else if(arr[2] == arr[3])out = {zero, arr[2] + 4'b1, arr[1], arr[0]};
 				else out = in;
 			end
 			default: out = in;
