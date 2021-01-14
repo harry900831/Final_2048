@@ -1,9 +1,11 @@
-module calc(clk, rst, up, down, left, right, board);
-	input clk, rst, up, down, left, right;
+module calc(clk, rst, up, down, left, right, switch, board, state);
+	input clk, rst, up, down, left, right, switch;
 	output reg [64 - 1 : 0] board;
+	output reg [2 : 0] state;
 	reg [64 - 1 : 0] next_board;
 	wire [64 - 1 : 0] up_board, down_board, right_board, left_board, gen_board;
-	reg [2 : 0] dir, next_dir, state, next_state;
+	reg [2 : 0] dir, next_dir, next_state;
+	wire [2 : 0] best_dir;
 	wire [4 - 1 : 0] arr [15 : 0];
 	wire win, nomove;
 
@@ -12,6 +14,7 @@ module calc(clk, rst, up, down, left, right, board);
 	parameter GEN = 3'b010;
 	parameter CHECK = 3'b011;
 	parameter END = 3'b100;
+	parameter SEARCH = 3'b101;
 
 	parameter UP = 3'b001;
 	parameter DOWN = 3'b010;
@@ -30,7 +33,7 @@ module calc(clk, rst, up, down, left, right, board);
 	MoveRight mr(board, right_board);
 	MoveLeft ml(board, left_board);
 	GenPlace genb1(clk, rst, board, gen_board);
-
+    AI ai1(clk, rst, state, board, best_dir);
 
 	always@(posedge clk) begin
 		if(rst == 1) begin
@@ -51,6 +54,8 @@ module calc(clk, rst, up, down, left, right, board);
 			else if(left == 1) next_dir = LEFT;
 			else if(right == 1) next_dir = RIGHT;
 			else next_dir = 3'b0;
+		end else if(state == SEARCH) begin
+		     next_dir = best_dir;
 		end else if(state == CHECK) next_dir = 3'b0;
 		else next_dir = dir;
 	end
@@ -59,7 +64,12 @@ module calc(clk, rst, up, down, left, right, board);
 		case(state)
 			INPUT: begin
 				if(next_dir != 3'b0) next_state = MERGE;
+				else if(switch == 1) next_state = SEARCH;
 				else next_state = INPUT;
+			end
+			SEARCH: begin
+			     if(next_dir != 3'b0) next_state = MERGE;
+			     else next_state = SEARCH;
 			end
 			MERGE: begin
 			     case(dir)
@@ -264,7 +274,7 @@ module Merge(in, out);
 				else out = {{2{zero}}, arr[3], arr[2]};
 			end
 			4'b1101:begin
-				if(arr[0] == arr[1]) out = {{2{zero}}, arr[3], arr[0] + 4'b1};
+				if(arr[0] == arr[2]) out = {{2{zero}}, arr[3], arr[0] + 4'b1};
 				else if(arr[2] == arr[3]) out = {{2{zero}}, arr[2] + 4'b1, arr[0]};
 				else out = {zero, arr[3], arr[2], arr[0]};
 			end
