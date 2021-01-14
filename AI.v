@@ -40,26 +40,24 @@ module AI(clk, rst, state, board, best_dir);
 	MakeMove mk4(clk, rst, start4, init_left, right_point);
 
 
-	reg [20 : 0] count, next_count;
+	reg [30 : 0] count, next_count;
     always@(posedge clk) begin
         if(state == INPUT) begin
-			count <= 21'd100000;
+			count <= 31'd5000000;
 		end else count <= next_count;
     end
 
 
 	always@(*) begin
-		if(state == SEARCH) next_count = (count == 0 ? 0 : count - 1);
-		else if(state == CHECK) next_count = 21'd7122;
-		else next_count = count;		
+		next_count = (count == 0 ? 0 : count - 1);		
 	end
 	always@(*) begin
-		if(count < 21'd5)	begin
+		if(count < 31'd5)	begin
 			if(up_point >= down_point && up_point >= left_point && up_point >= right_point) best_dir = UP;
 			else if(down_point >= up_point && down_point >= left_point && down_point >= right_point) best_dir = DOWN;
 			else if(left_point >= down_point && left_point >= up_point && left_point >= right_point) best_dir = LEFT;
 			else if(right_point >= up_point && right_point >= left_point && right_point >= down_point) best_dir = RIGHT;
-			else best_dir = 0;
+			else best_dir = DOWN;
 		end else best_dir = 0;
 	end
 
@@ -97,7 +95,8 @@ module MakeMove(clk, rst, start, in, out);
 
 	assign {arr[15], arr[14], arr[13], arr[12], arr[11], arr[10], arr[9], arr[8], arr[7], arr[6], arr[5], arr[4], arr[3], arr[2], arr[1], arr[0]} = board;
 
-	assign sum = (((arr[15]+arr[14])+(arr[13]+arr[12]))+((arr[11]+arr[10])+(arr[9]+arr[8])))+(((arr[7]+arr[6])+(arr[5]+arr[4]))+((arr[3]+arr[2])+(arr[1]+arr[0])));
+	assign sum = (((arr[15]==4'b0) + (arr[14]==4'b0) + (arr[13]==4'b0) + (arr[12]==4'b0)) + ((arr[11]==4'b0) + (arr[10]==4'b0) + (arr[9]==4'b0) + (arr[8]==4'b0))) + (((arr[7]==4'b0) + (arr[6]==4'b0) + (arr[5]==4'b0) + (arr[4]==4'b0)) + ((arr[3]==4'b0) + (arr[2]==4'b0) + (arr[1]==4'b0) + (arr[0]==4'b0)));
+
 
 
 
@@ -110,7 +109,7 @@ module MakeMove(clk, rst, start, in, out);
 
 	always@(posedge clk) begin
 		if(start == 1) begin
-			state <= INPUT;
+			state <= INIT;
 			dir <= 3'b0;
 			board <= in;
 		end else begin
@@ -123,7 +122,7 @@ module MakeMove(clk, rst, start, in, out);
 	reg[10 : 0] count, next_count;
 	always@(posedge clk) begin
 		if(start == 1) begin
-			count <= 11'd20;
+			count <= 11'd30;
 		end else count <= next_count;
 	end
 
@@ -133,8 +132,8 @@ module MakeMove(clk, rst, start, in, out);
 	end
 
 	always@(*) begin
-		if(count == 0) next_count = 11'd20;
-		else next_count = (state == CHECK ? count - 1 : count);
+		if(count == 0) next_count = 11'd30;
+	    else next_count = (state == CHECK ? count - 1 : count);
 	end
 
 	always@(*) begin
@@ -145,7 +144,7 @@ module MakeMove(clk, rst, start, in, out);
 	end
 
 	always@(*) begin
-		next_out = 0;
+	    next_out = 0;
 		case(state)
 			INIT: begin
 				next_state = INPUT;
@@ -167,19 +166,24 @@ module MakeMove(clk, rst, start, in, out);
 			GEN: next_state = CHECK;
 			CHECK: begin
 				if(count == 0) begin
-					next_state = INIT;
+					next_state = END;
 					next_out = sum;
 				end
-				else next_state = INPUT;
+				else begin
+				    next_state = INPUT;
+				end
 			end
-			END: next_state = END;
+			END: begin
+			     next_out =sum;
+			     next_state = INIT;
+			end
 			default: next_state = END;
 		endcase
 	end
 
 	always@(*) begin
-		if(state == INIT) board = in;
-		if(state == MERGE) begin
+		if(state == INIT) next_board = in;
+		else if(state == MERGE) begin
 			case(dir)
 				UP: next_board =  up_board;
 				DOWN: next_board =  down_board;
