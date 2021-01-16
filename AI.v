@@ -1,30 +1,30 @@
 module AI(clk, rst, state, board, best_dir, sum2);
-    input clk, rst;
-    input [63 : 0] board;
+	input clk, rst;
+	input [63 : 0] board;
 	input [2 : 0] state;
-    output reg [2 : 0] best_dir;
+	output reg [2 : 0] best_dir;
 
-    
-    parameter INPUT = 3'b000;
+	
+	parameter INPUT = 3'b000;
 	parameter MERGE = 3'b001;
 	parameter GEN = 3'b010;
 	parameter CHECK = 3'b011;
 	parameter END = 3'b100;
 	parameter SEARCH = 3'b101;
-    
-    parameter UP = 3'b001;
+	
+	parameter UP = 3'b001;
 	parameter DOWN = 3'b010;
 	parameter LEFT = 3'b011;
 	parameter RIGHT = 3'b100;
 
 	wire start1, start2, start3, start4;
-    wire [63 : 0] up_b, down_b, right_b, left_b, init_up, init_down, init_right, init_left;
-    MoveUp mu(board, up_b);
+	wire [63 : 0] up_b, down_b, right_b, left_b, init_up, init_down, init_right, init_left;
+	MoveUp mu(board, up_b);
 	MoveDown md(board, down_b);
 	MoveRight mr(board, right_b);
 	MoveLeft ml(board, left_b);
-    GenPlace genb1(clk, rst, up_b, init_up);
-    GenPlace genb2(clk, rst, down_b, init_down);
+	GenPlace genb1(clk, rst, up_b, init_up);
+	GenPlace genb2(clk, rst, down_b, init_down);
 	GenPlace genb3(clk, rst, right_b, init_right);
 	GenPlace genb4(clk, rst, left_b, init_left);
 
@@ -43,11 +43,11 @@ module AI(clk, rst, state, board, best_dir, sum2);
 
 
 	reg [30 : 0] count, next_count;
-    always@(posedge clk) begin
-        if(state == INPUT) begin
+	always@(posedge clk) begin
+	if(state == INPUT) begin
 			count <= 31'd5000000;
 		end else count <= next_count;
-    end
+	end
 
 
 	always@(*) begin
@@ -73,21 +73,21 @@ module MakeMove(clk, rst, start, in, out, sum);
 	input [63 : 0] in;
 	output reg [35 : 0] out;
 
-    parameter INPUT = 3'b000;
+	parameter INPUT = 3'b000;
 	parameter MERGE = 3'b001;
 	parameter GEN = 3'b010;
 	parameter CHECK = 3'b011;
 	parameter END = 3'b100;
 	parameter SEARCH = 3'b101;
 	parameter INIT = 3'b110;
-    
-    parameter UP = 3'b001;
+	
+	parameter UP = 3'b001;
 	parameter DOWN = 3'b010;
 	parameter LEFT = 3'b011;
 	parameter RIGHT = 3'b100;
 	parameter BASE = 31'b0000000000000000000000000000001;
 
-    reg [35 : 0] next_out;
+	reg [35 : 0] next_out;
 	reg [2 : 0] state, next_state, dir, next_dir;
 	wire [3 : 0] get_rnd;
 	reg [63 : 0] board, next_board;
@@ -133,9 +133,9 @@ module MakeMove(clk, rst, start, in, out, sum);
 	end
 
 	always@(*) begin
-	    if(state == INIT) next_count = 11'd20;
+		if(state == INIT) next_count = 11'd20;
 		else if(state == CHECK) next_count =  (count == 0 ? 0 : count - 1);
-	    else next_count = count;
+		else next_count = count;
 	end
 
 	always@(*) begin
@@ -145,7 +145,7 @@ module MakeMove(clk, rst, start, in, out, sum);
 	end
 
 	always@(*) begin
-	    next_out = 0;
+		next_out = 0;
 		case(state)
 			INIT: begin
 				next_state = INPUT;
@@ -155,13 +155,13 @@ module MakeMove(clk, rst, start, in, out, sum);
 				else next_state = INPUT;
 			end
 			MERGE: begin
-			     case(dir)
-			         UP: next_state = (board == up_board ? SEARCH : GEN);
-			         DOWN: next_state = (board == down_board ? SEARCH : GEN);
-			         LEFT: next_state = (board == left_board ? SEARCH : GEN);
-			         RIGHT: next_state = (board == right_board ? SEARCH : GEN);
-			         default next_state = GEN;
-			     endcase
+				case(dir)
+				UP: next_state = (board == up_board ? SEARCH : GEN);
+				DOWN: next_state = (board == down_board ? SEARCH : GEN);
+				LEFT: next_state = (board == left_board ? SEARCH : GEN);
+				RIGHT: next_state = (board == right_board ? SEARCH : GEN);
+				default next_state = GEN;
+				endcase
 			end
 			SEARCH: next_state = CHECK;
 			GEN: next_state = CHECK;
@@ -172,9 +172,9 @@ module MakeMove(clk, rst, start, in, out, sum);
 				end
 				else next_state = INPUT;
 			end
-			END: begin
-			     next_out = sum;
-			     next_state = INIT;
+			END:begin
+				next_out = sum;
+				next_state = INIT;
 			end
 			default: next_state = INIT;
 		endcase
@@ -191,7 +191,7 @@ module MakeMove(clk, rst, start, in, out, sum);
 				default: next_board =  board;
 			endcase
 		end else if(state == GEN) begin
-		        next_board = gen_board;
+			next_board = gen_board;
 		end else next_board = board;
 	end
 
