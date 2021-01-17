@@ -33,9 +33,9 @@ module AI(clk, rst, state, board, best_dir, point);
 	assign start3 = (board == right_b || state == INPUT) ? 1 : 0;
 	assign start4 = (board == left_b || state == INPUT )? 1 : 0;
 	
-	wire [35 : 0] up_point, down_point, left_point, right_point;
+	wire [60 : 0] up_point, down_point, left_point, right_point;
 	wire [30 : 0] sum1,sum2, sum3, sum4;
-	output wire [35:0] point;
+	output wire [60:0] point;
     assign point = down_point;
 	MakeMove mk1(clk, rst, start1, init_up, up_point, sum1);
 	MakeMove mk2(clk, rst, start2, init_down, down_point, sum2);
@@ -73,7 +73,7 @@ endmodule
 module MakeMove(clk, rst, start, in, out, sum);
 	input clk, rst, start;
 	input [63 : 0] in;
-	output reg [35 : 0] out;
+	output reg [60 : 0] out;
 
     parameter INPUT = 3'b000;
 	parameter MERGE = 3'b001;
@@ -87,13 +87,13 @@ module MakeMove(clk, rst, start, in, out, sum);
 	parameter DOWN = 3'b010;
 	parameter LEFT = 3'b011;
 	parameter RIGHT = 3'b100;
-	parameter BASE = 31'b0000000000000000000000000000001;
+	parameter BASE = 61'b0000000000000000000000000000001;
 
-    reg [35 : 0] next_out;
+    reg [60 : 0] next_out;
 	reg [2 : 0] state, next_state, dir, next_dir;
 	wire [3 : 0] get_rnd;
 	reg [63 : 0] board, next_board;
-	output wire [30 : 0] sum;
+	output wire [60 : 0] sum;
 	wire [3 : 0] arr [15 : 0];
 
 
@@ -125,17 +125,18 @@ module MakeMove(clk, rst, start, in, out, sum);
 
 	reg[10 : 0] count, next_count;
 	always@(posedge clk) begin
-		if(start == 1) count <= 11'd20;
+		if(start == 1) count <= 11'd100;
 		else count <= next_count;
 	end
 
 	always@(posedge clk) begin
 		if(start == 1) out <= 0;
-		else out <= out + next_out;
+		else if(state == CHECK && count == 0)out <= out + sum;
+		else out <= out;
 	end
 
 	always@(*) begin
-	    if(state == INIT) next_count = 11'd20;
+	    if(state == INIT) next_count = 11'd100;
 		else if(state == CHECK) next_count =  (count == 0 ? 0 : count - 1);
 	    else next_count = count;
 	end
@@ -146,10 +147,10 @@ module MakeMove(clk, rst, start, in, out, sum);
 		else next_dir = dir;
 	end
 
-    always@(*) begin
-        if(state == CHECK && count == 0) next_out = sum;
-        else next_out = 0;
-    end
+    //always@(*) begin
+      // if(state == CHECK && count == 0) next_out = sum;
+       //else next_out = 0;
+    //end
 	always@(*) begin
 		case(state)
 			INIT: begin
@@ -198,3 +199,5 @@ module MakeMove(clk, rst, start, in, out, sum);
 	end
 
 endmodule
+
+
